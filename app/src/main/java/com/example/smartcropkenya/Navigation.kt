@@ -8,6 +8,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -23,12 +24,12 @@ sealed class Screen(val route: String) {
     }
     object MainInput : Screen("main_input_screen")
     object Results : Screen("results_screen")
-    object History : Screen("history_screen")
 }
 
 @Composable
 fun SmartCropAppNavHost() {
     val navController = rememberNavController()
+    val viewModel: SmartCropViewModel = viewModel()  // shared ViewModel across screens
 
     NavHost(navController = navController, startDestination = Screen.Splash.route) {
 
@@ -61,32 +62,23 @@ fun SmartCropAppNavHost() {
             DashboardScreen(
                 userName = userName,
                 isNewUser = isNewUser,
-                onNavigateToInput = { navController.navigate(Screen.MainInput.route) },
-                onNavigateToHistory = { navController.navigate(Screen.History.route) }
+                onNavigateToInput = { navController.navigate(Screen.MainInput.route) }
             )
         }
 
-        // Fixed: Only one MainInput route exists now
         composable(Screen.MainInput.route) {
             MainInputScreen(
-                onNavigateToResults = { navController.navigate(Screen.Results.route) }
+                onNavigateToResults = { navController.navigate(Screen.Results.route) },
+                viewModel = viewModel
             )
         }
 
         composable(Screen.Results.route) {
-            // Note: Parameter name here is onNavigateHome
             ResultsScreen(
+                viewModel = viewModel,
                 onNavigateHome = {
+                    viewModel.resetToInput()
                     navController.popBackStack(Screen.Dashboard.route, inclusive = false)
-                }
-            )
-        }
-        composable(Screen.History.route) {
-            HistoryScreen(
-                onNavigateBack = {
-                    // This simply pops the History screen off the stack,
-                    // returning the user safely to the Dashboard
-                    navController.popBackStack()
                 }
             )
         }
@@ -102,7 +94,12 @@ fun SplashScreen(onSplashFinished: () -> Unit) {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(text = "🌱", fontSize = 80.sp)
-            Text(text = "SmartCrop Kenya", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+            Text(
+                text = "SmartCrop Kenya",
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
         }
     }
 }

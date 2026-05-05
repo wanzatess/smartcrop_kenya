@@ -1,4 +1,3 @@
-// Save in SmartCropRepository.kt (or a new file DataModels.kt)
 package com.example.smartcropkenya
 
 data class SubcountyLocation(val name: String, val lat: Double, val lon: Double, val county: String)

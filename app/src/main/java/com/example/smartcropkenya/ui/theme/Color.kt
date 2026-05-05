@@ -2,10 +2,14 @@ package com.example.smartcropkenya.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-val Purple80 = Color(0xFFD0BCFF)
-val PurpleGrey80 = Color(0xFFCCC2DC)
-val Pink80 = Color(0xFFEFB8C8)
+val Green700 = Color(0xFF2E7D32)
+val Green600 = Color(0xFF388E3C)
+val Green50  = Color(0xFFF1F8E9)
 
-val Purple40 = Color(0xFF6650a4)
-val PurpleGrey40 = Color(0xFF625b71)
-val Pink40 = Color(0xFF7D5260)
+val Grey900 = Color(0xFF212121)
+val Grey700 = Color(0xFF616161)
+val Grey400 = Color(0xFFBDBDBD)
+val Grey100 = Color(0xFFF5F5F5)
+val White   = Color(0xFFFFFFFF)
+
+val Amber700 = Color(0xFFF57F17)
