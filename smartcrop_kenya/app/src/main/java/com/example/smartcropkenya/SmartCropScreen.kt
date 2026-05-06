@@ -20,7 +20,7 @@ fun SmartCropApp(viewModel: SmartCropViewModel = androidx.lifecycle.viewmodel.co
         when (val state = uiState) {
             is UiState.Input -> InputFormScreen(locations, viewModel::submitData)
             is UiState.Loading -> LoadingScreen()
-            is UiState.Success -> ResultScreen(state.recommendations, viewModel::resetToInput)
+            is UiState.Success -> ResultScreen(state.result, viewModel::resetToInput)
             is UiState.Error -> ErrorScreen(state.message, viewModel::resetToInput)
         }
     }
@@ -41,6 +41,7 @@ fun InputFormScreen(
     Column(modifier = Modifier.fillMaxSize().padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         Text("Soil Metrics", style = MaterialTheme.typography.headlineMedium)
 
+        // Simple selection (In a real app, use a DropdownMenu)
         Text("Select Location: ${selectedLocation?.name ?: "None"}")
         Row {
             locations.take(3).forEach { loc ->
@@ -77,41 +78,18 @@ fun LoadingScreen() {
 
 @Composable
 fun ErrorScreen(message: String, onRetry: () -> Unit) {
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
         Text("Error: $message", color = MaterialTheme.colorScheme.error)
         Button(onClick = onRetry) { Text("Retry") }
     }
 }
 
 @Composable
-fun ResultScreen(recommendations: List<CropResult>, onReset: () -> Unit) {
-    Column(
-        modifier = Modifier.fillMaxSize().padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text("Top Crop Recommendations", style = MaterialTheme.typography.titleLarge)
-        Spacer(modifier = Modifier.height(16.dp))
-
-        recommendations.forEachIndexed { index, crop ->
-            Card(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text("#${index + 1} ${crop.crop.replaceFirstChar { it.uppercase() }}", style = MaterialTheme.typography.titleMedium)
-                    Text("${crop.confidence}%", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-        Button(onClick = onReset) { Text("New Analysis") }
+fun ResultScreen(result: CropPredictionResult, onReset: () -> Unit) {
+    Column(modifier = Modifier.fillMaxSize().padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Text("Results", style = MaterialTheme.typography.titleLarge)
+        Text("Temp: ${result.averageTemp}°C | Rain: ${result.averageRainfall}mm")
+        result.topCrops.forEach { Text(it, style = MaterialTheme.typography.headlineSmall) }
+        Button(onClick = onReset) { Text("Back") }
     }
 }

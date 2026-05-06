@@ -19,9 +19,8 @@ fun ResultsScreen(
     viewModel: SmartCropViewModel,
     onNavigateHome: () -> Unit
 ) {
-    val uiState            by viewModel.uiState.collectAsState()
-    val weatherState       by viewModel.weatherState.collectAsState()
-    val recommendationState by viewModel.recommendationState.collectAsState()
+    val uiState      by viewModel.uiState.collectAsState()
+    val weatherState by viewModel.weatherState.collectAsState()
 
     Scaffold(
         topBar = {
@@ -73,7 +72,7 @@ fun ResultsScreen(
                     ) {
                         CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                         Text(
-                            "Analysing soil data...",
+                            "Analysing soil & weather data...",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -91,14 +90,15 @@ fun ResultsScreen(
                         // Weather section
                         WeatherForecastSection(weatherState = weatherState)
 
-                        // Recommendation section
-                        Column(modifier = Modifier.fillMaxWidth()) {
-                            Text(
-                                "CROP RECOMMENDATION",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(bottom = 8.dp, start = 2.dp)
-                            )
+                        // Crop Recommendations section
+                        Text(
+                            "CROP RECOMMENDATIONS",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(bottom = 4.dp, start = 2.dp)
+                        )
+
+                        state.recommendations.forEachIndexed { index, crop ->
                             Card(
                                 modifier = Modifier.fillMaxWidth(),
                                 shape = RoundedCornerShape(12.dp),
@@ -107,68 +107,53 @@ fun ResultsScreen(
                                     containerColor = MaterialTheme.colorScheme.surface
                                 )
                             ) {
-                                when (val rec = recommendationState) {
-                                    is RecommendationUiState.Idle -> {}
-                                    is RecommendationUiState.Loading -> {
-                                        Box(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .padding(32.dp),
-                                            contentAlignment = Alignment.Center
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Row(
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        // Rank badge
+                                        Surface(
+                                            shape = RoundedCornerShape(8.dp),
+                                            color = MaterialTheme.colorScheme.primary
                                         ) {
-                                            Column(
-                                                horizontalAlignment = Alignment.CenterHorizontally,
-                                                verticalArrangement = Arrangement.spacedBy(8.dp)
-                                            ) {
-                                                CircularProgressIndicator(
-                                                    color = MaterialTheme.colorScheme.primary
-                                                )
-                                                Text(
-                                                    "Generating recommendation...",
-                                                    style = MaterialTheme.typography.bodyMedium,
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                                )
-                                            }
+                                            Text(
+                                                "#${index + 1}",
+                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                                style = MaterialTheme.typography.labelMedium,
+                                                color = MaterialTheme.colorScheme.onPrimary
+                                            )
                                         }
-                                    }
-                                    is RecommendationUiState.Error -> {
                                         Text(
-                                            "Could not load recommendation: ${rec.message}",
-                                            color = MaterialTheme.colorScheme.error,
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            modifier = Modifier.padding(16.dp)
+                                            crop.crop.replaceFirstChar { it.uppercase() },
+                                            style = MaterialTheme.typography.titleMedium
                                         )
                                     }
-                                    is RecommendationUiState.Success -> {
-                                        Text(
-                                            rec.text,
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            modifier = Modifier.padding(16.dp),
-                                            lineHeight = MaterialTheme.typography.bodyMedium.lineHeight
-                                        )
-                                    }
+                                    Text(
+                                        "${crop.confidence}%",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
                                 }
                             }
                         }
 
-                        OutlinedButton(
-                            onClick = { viewModel.refreshRecommendation() },
-                            modifier = Modifier.fillMaxWidth().height(48.dp),
-                            shape = RoundedCornerShape(12.dp),
-                            enabled = recommendationState !is RecommendationUiState.Loading
-                        ) {
-                            Text(
-                                "Refresh Recommendation",
-                                style = MaterialTheme.typography.titleMedium
-                            )
-                        }
+                        Spacer(modifier = Modifier.height(8.dp))
 
                         Button(
                             onClick = {
                                 viewModel.resetToInput()
                                 onNavigateHome()
                             },
-                            modifier = Modifier.fillMaxWidth().height(52.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(52.dp),
                             shape = RoundedCornerShape(12.dp)
                         ) {
                             Text(

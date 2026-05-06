@@ -55,7 +55,7 @@ fun DashboardScreen(
             // Greeting
             Column {
                 Text(
-                    text = if (isNewUser) "Welcome, $userName" else "Welcome back, $userName",
+                    text = "Welcome, $userName",
                     style = MaterialTheme.typography.headlineMedium,
                     color = MaterialTheme.colorScheme.onBackground
                 )

@@ -10,7 +10,7 @@ import kotlinx.coroutines.launch
 sealed class UiState {
     object Input : UiState()
     object Loading : UiState()
-    data class Success(val result: CropPredictionResult) : UiState()
+    data class Success(val recommendations: List<CropResult>) : UiState()
     data class Error(val message: String) : UiState()
 }
 
@@ -29,64 +29,65 @@ class SmartCropViewModel(application: Application) : AndroidViewModel(applicatio
     private val _weatherState = MutableStateFlow<WeatherUiState>(WeatherUiState.Idle)
     val weatherState = _weatherState.asStateFlow()
 
-    private val _recommendationState = MutableStateFlow<RecommendationUiState>(RecommendationUiState.Idle)
-    val recommendationState = _recommendationState.asStateFlow()
-
-    private var lastLocation: SubcountyLocation? = null
-    private var lastMetrics: SoilMetrics? = null
-
     init {
         viewModelScope.launch {
             _locations.value = repository.getLocations()
-            // Temporary - remove after testing
-            val models = cropRecommendationRepository.listModels()
-            android.util.Log.d("GeminiModels", models)
         }
     }
 
     fun submitData(location: SubcountyLocation, n: Int, p: Int, k: Int, ph: Double) {
-        val metrics = SoilMetrics(n, p, k, ph)
-        lastLocation = location
-        lastMetrics = metrics
-
         _uiState.value = UiState.Loading
-        viewModelScope.launch {
-            val result = repository.getCropPrediction(location, metrics)
-            result.onSuccess { _uiState.value = UiState.Success(it) }
-                .onFailure { _uiState.value = UiState.Error(it.message ?: "Failed") }
 
-            _weatherState.value = WeatherUiState.Loading
-            val weather = weatherRepository.getThreeMonthForecast(location.lat, location.lon)
-            weather.onSuccess {
-                _weatherState.value = WeatherUiState.Success(it)
-                fetchRecommendation(location, metrics, it)
-            }.onFailure {
-                _weatherState.value = WeatherUiState.Error(it.message ?: "Weather fetch failed")
+        viewModelScope.launch {
+            // Fetch weather
+            val weatherResult = weatherRepository.getThreeMonthForecast(location.lat, location.lon)
+
+            // Update weather state so the UI can display it
+            if (weatherResult.isSuccess) {
+                val summaries = weatherResult.getOrDefault(emptyList())
+                _weatherState.value = WeatherUiState.Success(summaries)
+            } else {
+                _weatherState.value = WeatherUiState.Error(weatherResult.exceptionOrNull()?.message ?: "Weather fetch failed")
+            }
+
+            // Average out weather values for the crop API
+            val temperature: Float
+            val humidity: Float
+            val rainfall: Float
+
+            if (weatherResult.isSuccess) {
+                val summaries = weatherResult.getOrDefault(emptyList())
+                temperature = summaries.map { (it.avgMaxTemp + it.avgMinTemp) / 2 }.average().toFloat()
+                humidity = summaries.map { it.avgHumidity }.average().toFloat()
+                rainfall = summaries.sumOf { it.totalRainfall }.toFloat()
+            } else {
+                temperature = 24f
+                humidity = 70f
+                rainfall = 150f
+            }
+
+            // Call crop recommendation API
+            val result = cropRecommendationRepository.getRecommendations(
+                n = n.toFloat(),
+                p = p.toFloat(),
+                k = k.toFloat(),
+                temperature = temperature,
+                humidity = humidity,
+                ph = ph.toFloat(),
+                rainfall = rainfall
+            )
+
+            result.onSuccess { crops ->
+                _uiState.value = UiState.Success(crops)
+            }
+            result.onFailure { error ->
+                _uiState.value = UiState.Error(error.message ?: "Something went wrong")
             }
         }
-    }
-
-    fun refreshRecommendation() {
-        val location = lastLocation ?: return
-        val metrics = lastMetrics ?: return
-        val weather = (_weatherState.value as? WeatherUiState.Success)?.summaries ?: return
-        viewModelScope.launch { fetchRecommendation(location, metrics, weather) }
-    }
-
-    private suspend fun fetchRecommendation(
-        location: SubcountyLocation,
-        metrics: SoilMetrics,
-        weather: List<MonthlyWeatherSummary>
-    ) {
-        _recommendationState.value = RecommendationUiState.Loading
-        val rec = cropRecommendationRepository.getRecommendation(location, metrics, weather)
-        rec.onSuccess { _recommendationState.value = RecommendationUiState.Success(it) }
-            .onFailure { _recommendationState.value = RecommendationUiState.Error(it.message ?: "Failed") }
     }
 
     fun resetToInput() {
         _uiState.value = UiState.Input
         _weatherState.value = WeatherUiState.Idle
-        _recommendationState.value = RecommendationUiState.Idle
     }
 }
