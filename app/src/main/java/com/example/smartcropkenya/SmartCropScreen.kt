@@ -12,15 +12,27 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 
 @Composable
-fun SmartCropApp(viewModel: SmartCropViewModel = androidx.lifecycle.viewmodel.compose.viewModel()) {
+fun SmartCropApp(
+    viewModel: SmartCropViewModel = androidx.lifecycle.viewmodel.compose.viewModel(),
+    onNavigateToResults: () -> Unit = {}
+) {
     val uiState by viewModel.uiState.collectAsState()
     val locations by viewModel.locations.collectAsState()
 
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         when (val state = uiState) {
-            is UiState.Input -> InputFormScreen(locations, viewModel::submitData)
+            is UiState.Input -> InputFormScreen(
+                locations = locations,
+                onSubmit = { location ->
+                    viewModel.predictByLocation(location)
+                    onNavigateToResults() }
+            )
             is UiState.Loading -> LoadingScreen()
-            is UiState.Success -> ResultScreen(state.recommendations, viewModel::resetToInput)
+            is UiState.Success -> {
+                // Navigation to ResultsScreen is handled via onNavigateToResults callback.
+                // This branch is a fallback in case navigation hasn't fired yet.
+                LoadingScreen()
+            }
             is UiState.Error -> ErrorScreen(state.message, viewModel::resetToInput)
         }
     }
@@ -30,40 +42,73 @@ fun SmartCropApp(viewModel: SmartCropViewModel = androidx.lifecycle.viewmodel.co
 @Composable
 fun InputFormScreen(
     locations: List<SubcountyLocation>,
-    onSubmit: (SubcountyLocation, Int, Int, Int, Double) -> Unit
+    onSubmit: (SubcountyLocation) -> Unit
 ) {
     var selectedLocation by remember { mutableStateOf<SubcountyLocation?>(null) }
-    var n by remember { mutableStateOf("") }
-    var p by remember { mutableStateOf("") }
-    var k by remember { mutableStateOf("") }
-    var ph by remember { mutableStateOf("") }
 
-    Column(modifier = Modifier.fillMaxSize().padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        Text("Soil Metrics", style = MaterialTheme.typography.headlineMedium)
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text("SmartCrop Kenya", style = MaterialTheme.typography.headlineMedium)
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            "Select your location and let the system detect soil & weather conditions automatically.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(modifier = Modifier.height(24.dp))
 
-        Text("Select Location: ${selectedLocation?.name ?: "None"}")
-        Row {
-            locations.take(3).forEach { loc ->
-                Button(onClick = { selectedLocation = loc }, modifier = Modifier.padding(4.dp)) {
-                    Text(loc.name)
+        Text(
+            "Select Location",
+            style = MaterialTheme.typography.titleMedium
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Show all locations as selectable chips/buttons
+        locations.chunked(3).forEach { rowLocations ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                rowLocations.forEach { loc ->
+                    val isSelected = selectedLocation == loc
+                    FilterChip(
+                        selected = isSelected,
+                        onClick = { selectedLocation = loc },
+                        label = { Text(loc.name) },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                // Fill remaining space if row is not full
+                repeat(3 - rowLocations.size) {
+                    Spacer(modifier = Modifier.weight(1f))
                 }
             }
+            Spacer(modifier = Modifier.height(4.dp))
         }
 
-        OutlinedTextField(value = n, onValueChange = { n = it }, label = { Text("Nitrogen (N)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
-        OutlinedTextField(value = p, onValueChange = { p = it }, label = { Text("Phosphorus (P)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
-        OutlinedTextField(value = k, onValueChange = { k = it }, label = { Text("Potassium (K)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
-        OutlinedTextField(value = ph, onValueChange = { ph = it }, label = { Text("pH Level") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+        if (selectedLocation != null) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                "Selected: ${selectedLocation!!.name}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.primary
+            )
+        }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(24.dp))
 
         Button(
             enabled = selectedLocation != null,
-            onClick = {
-                onSubmit(selectedLocation!!, n.toIntOrNull() ?: 0, p.toIntOrNull() ?: 0, k.toIntOrNull() ?: 0, ph.toDoubleOrNull() ?: 7.0)
-            }
+            onClick = { onSubmit(selectedLocation!!) },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(52.dp)
         ) {
-            Text("Predict Crops")
+            Text("Analyse & Predict Crops")
         }
     }
 }
@@ -71,7 +116,17 @@ fun InputFormScreen(
 @Composable
 fun LoadingScreen() {
     Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-        CircularProgressIndicator()
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            CircularProgressIndicator()
+            Text(
+                "Analysing soil & weather data...",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }
 
@@ -83,35 +138,7 @@ fun ErrorScreen(message: String, onRetry: () -> Unit) {
         verticalArrangement = Arrangement.Center
     ) {
         Text("Error: $message", color = MaterialTheme.colorScheme.error)
-        Button(onClick = onRetry) { Text("Retry") }
-    }
-}
-
-@Composable
-fun ResultScreen(recommendations: List<CropResult>, onReset: () -> Unit) {
-    Column(
-        modifier = Modifier.fillMaxSize().padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text("Top Crop Recommendations", style = MaterialTheme.typography.titleLarge)
         Spacer(modifier = Modifier.height(16.dp))
-
-        recommendations.forEachIndexed { index, crop ->
-            Card(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text("#${index + 1} ${crop.crop.replaceFirstChar { it.uppercase() }}", style = MaterialTheme.typography.titleMedium)
-                    Text("${crop.confidence}%", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-        Button(onClick = onReset) { Text("New Analysis") }
+        Button(onClick = onRetry) { Text("Retry") }
     }
 }

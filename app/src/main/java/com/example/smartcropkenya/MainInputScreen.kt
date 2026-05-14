@@ -4,17 +4,12 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -24,10 +19,6 @@ fun MainInputScreen(
     viewModel: SmartCropViewModel = viewModel()
 ) {
     val locations by viewModel.locations.collectAsState()
-    var nitrogen   by remember { mutableStateOf("") }
-    var phosphorus by remember { mutableStateOf("") }
-    var potassium  by remember { mutableStateOf("") }
-    var ph         by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf("") }
 
     var countyExpanded by remember { mutableStateOf(false) }
@@ -77,8 +68,24 @@ fun MainInputScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
 
+            // Info banner
+            Surface(
+                color = MaterialTheme.colorScheme.primaryContainer,
+                shape = RoundedCornerShape(10.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    "Select your location and we'll automatically detect your soil nutrients, " +
+                            "pH, and 3-month weather outlook to recommend the best crops.",
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.padding(12.dp),
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+
             // Location section
             SectionCard(title = "Location") {
+                // County dropdown
                 ExposedDropdownMenuBox(
                     expanded = countyExpanded,
                     onExpandedChange = { countyExpanded = !countyExpanded }
@@ -89,8 +96,12 @@ fun MainInputScreen(
                         readOnly = true,
                         label = { Text("County") },
                         placeholder = { Text("Select county") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = countyExpanded) },
-                        modifier = Modifier.menuAnchor().fillMaxWidth(),
+                        trailingIcon = {
+                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = countyExpanded)
+                        },
+                        modifier = Modifier
+                            .menuAnchor()
+                            .fillMaxWidth(),
                         shape = RoundedCornerShape(10.dp)
                     )
                     ExposedDropdownMenu(
@@ -118,6 +129,7 @@ fun MainInputScreen(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
+                // Sub-county dropdown
                 ExposedDropdownMenuBox(
                     expanded = subCountyExpanded && selectedCounty.isNotEmpty(),
                     onExpandedChange = {
@@ -130,9 +142,13 @@ fun MainInputScreen(
                         readOnly = true,
                         label = { Text("Sub-county") },
                         placeholder = { Text("Select sub-county") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = subCountyExpanded) },
+                        trailingIcon = {
+                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = subCountyExpanded)
+                        },
                         enabled = selectedCounty.isNotEmpty(),
-                        modifier = Modifier.menuAnchor().fillMaxWidth(),
+                        modifier = Modifier
+                            .menuAnchor()
+                            .fillMaxWidth(),
                         shape = RoundedCornerShape(10.dp)
                     )
                     ExposedDropdownMenu(
@@ -152,60 +168,7 @@ fun MainInputScreen(
                 }
             }
 
-            // Soil nutrients section
-            SectionCard(title = "Soil Nutrients (mg/kg)") {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    OutlinedTextField(
-                        value = nitrogen,
-                        onValueChange = { nitrogen = it },
-                        label = { Text("Nitrogen (N)") },
-                        placeholder = { Text("Enter value between 1 - 100") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(10.dp),
-                        singleLine = true,
-                    )
-                    OutlinedTextField(
-                        value = phosphorus,
-                        onValueChange = { phosphorus = it },
-                        label = { Text("Phosphorus (P)") },
-                        placeholder = { Text("Enter value between 1 - 100") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(10.dp),
-                        singleLine = true,
-                    )
-                    OutlinedTextField(
-                        value = potassium,
-                        onValueChange = { potassium = it },
-                        label = { Text("Potassium (K)") },
-                        placeholder = { Text("Enter value between 1 - 100") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(10.dp),
-                        singleLine = true,
-                    )
-                }
-            }
-
-            // Soil pH section
-            SectionCard(title = "Soil pH") {
-                OutlinedTextField(
-                    value = ph,
-                    onValueChange = { ph = it },
-                    label = { Text("pH Level") },
-                    placeholder = { Text("0.0 — 14.0") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(10.dp),
-                    singleLine = true,
-                    supportingText = { Text("Optimal range for most crops: 6.0 — 7.5") }
-                )
-            }
-
+            // Error message
             if (errorMessage.isNotEmpty()) {
                 Surface(
                     color = MaterialTheme.colorScheme.errorContainer,
@@ -221,24 +184,16 @@ fun MainInputScreen(
                 }
             }
 
+            // Submit button — navigate immediately, ResultsScreen handles loading state
             Button(
                 onClick = {
-                    val n    = nitrogen.toIntOrNull() ?: -1
-                    val p    = phosphorus.toIntOrNull() ?: -1
-                    val k    = potassium.toIntOrNull() ?: -1
-                    val phVal = ph.toDoubleOrNull() ?: -1.0
-                    val loc  = selectedLocation
-                    when {
-                        loc == null -> errorMessage = "Please select a county and sub-county."
-                        n !in 1..100 || p !in 1..100 || k !in 1..100 ->
-                            errorMessage = "NPK values must each be between 1 and 100 mg/kg."
-                        phVal < 0.0 || phVal > 14.0 ->
-                            errorMessage = "Please enter a valid pH between 0.0 and 14.0."
-                        else -> {
-                            errorMessage = ""
-                            viewModel.submitData(loc, n, p, k, phVal)
-                            onNavigateToResults()
-                        }
+                    val loc = selectedLocation
+                    if (loc == null) {
+                        errorMessage = "Please select a county and sub-county."
+                    } else {
+                        errorMessage = ""
+                        viewModel.predictByLocation(loc) // fire the API call
+                        onNavigateToResults()            // navigate straight away
                     }
                 },
                 modifier = Modifier
@@ -247,7 +202,7 @@ fun MainInputScreen(
                 shape = RoundedCornerShape(12.dp)
             ) {
                 Text(
-                    "Analyse Soil Data",
+                    "Analyse & Predict Crops",
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onPrimary
                 )
@@ -271,7 +226,9 @@ fun SectionCard(title: String, content: @Composable ColumnScope.() -> Unit) {
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(12.dp),
             elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surface
+            )
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 content()

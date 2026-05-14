@@ -6,7 +6,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
@@ -20,7 +19,8 @@ sealed class Screen(val route: String) {
     object Splash : Screen("splash_screen")
     object Auth : Screen("auth_screen")
     object Dashboard : Screen("dashboard_screen/{userName}/{isNewUser}") {
-        fun createRoute(userName: String, isNewUser: Boolean) = "dashboard_screen/$userName/$isNewUser"
+        fun createRoute(userName: String, isNewUser: Boolean) =
+            "dashboard_screen/$userName/$isNewUser"
     }
     object MainInput : Screen("main_input_screen")
     object Results : Screen("results_screen")
@@ -29,7 +29,7 @@ sealed class Screen(val route: String) {
 @Composable
 fun SmartCropAppNavHost() {
     val navController = rememberNavController()
-    val viewModel: SmartCropViewModel = viewModel()  // shared ViewModel across screens
+    val viewModel: SmartCropViewModel = viewModel() // shared across screens
 
     NavHost(navController = navController, startDestination = Screen.Splash.route) {
 
@@ -58,7 +58,6 @@ fun SmartCropAppNavHost() {
         ) { backStackEntry ->
             val userName = backStackEntry.arguments?.getString("userName") ?: "Farmer"
             val isNewUser = backStackEntry.arguments?.getBoolean("isNewUser") ?: false
-
             DashboardScreen(
                 userName = userName,
                 isNewUser = isNewUser,
@@ -68,8 +67,12 @@ fun SmartCropAppNavHost() {
 
         composable(Screen.MainInput.route) {
             MainInputScreen(
-                onNavigateToResults = { navController.navigate(Screen.Results.route) },
-                viewModel = viewModel
+                viewModel = viewModel,
+                onNavigateToResults = {
+                    // Navigate immediately — ResultsScreen shows Loading spinner
+                    // while the API call completes in the background
+                    navController.navigate(Screen.Results.route)
+                }
             )
         }
 

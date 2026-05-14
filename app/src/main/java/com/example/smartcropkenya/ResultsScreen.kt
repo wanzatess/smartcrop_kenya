@@ -19,8 +19,7 @@ fun ResultsScreen(
     viewModel: SmartCropViewModel,
     onNavigateHome: () -> Unit
 ) {
-    val uiState      by viewModel.uiState.collectAsState()
-    val weatherState by viewModel.weatherState.collectAsState()
+    val uiState by viewModel.uiState.collectAsState()
 
     Scaffold(
         topBar = {
@@ -64,6 +63,7 @@ fun ResultsScreen(
                 .background(MaterialTheme.colorScheme.background)
         ) {
             when (val state = uiState) {
+
                 is UiState.Loading -> {
                     Column(
                         modifier = Modifier.align(Alignment.Center),
@@ -87,10 +87,14 @@ fun ResultsScreen(
                             .padding(20.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        // Weather section
-                        WeatherForecastSection(weatherState = weatherState)
+                        // Detected Conditions — nullable, backend may omit
+                        // if external APIs (iSDA / Open-Meteo) fail
+                        val conditions = state.conditions
+                        if (conditions != null) {
+                            DetectedConditionsSection(conditions = conditions)
+                        }
 
-                        // Crop Recommendations section
+                        // Crop Recommendations
                         Text(
                             "CROP RECOMMENDATIONS",
                             style = MaterialTheme.typography.labelMedium,
@@ -98,7 +102,7 @@ fun ResultsScreen(
                             modifier = Modifier.padding(bottom = 4.dp, start = 2.dp)
                         )
 
-                        state.recommendations.forEachIndexed { index, crop ->
+                        state.recommendations.forEachIndexed { index, crop: CropResult ->
                             Card(
                                 modifier = Modifier.fillMaxWidth(),
                                 shape = RoundedCornerShape(12.dp),
@@ -125,7 +129,10 @@ fun ResultsScreen(
                                         ) {
                                             Text(
                                                 "#${index + 1}",
-                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                                modifier = Modifier.padding(
+                                                    horizontal = 8.dp,
+                                                    vertical = 4.dp
+                                                ),
                                                 style = MaterialTheme.typography.labelMedium,
                                                 color = MaterialTheme.colorScheme.onPrimary
                                             )
@@ -135,8 +142,9 @@ fun ResultsScreen(
                                             style = MaterialTheme.typography.titleMedium
                                         )
                                     }
+                                    // confidence is Double — format to avoid showing decimals
                                     Text(
-                                        "${crop.confidence}%",
+                                        "${"%.0f".format(crop.confidence)}%",
                                         style = MaterialTheme.typography.titleMedium,
                                         color = MaterialTheme.colorScheme.primary
                                     )
@@ -194,14 +202,18 @@ fun ResultsScreen(
                     }
                 }
 
-                else -> {
+                // UiState.Input — listed explicitly to satisfy sealed class exhaustiveness
+                // (replaces the old `else` branch which Kotlin may reject on sealed classes)
+                is UiState.Input -> {
                     Button(
                         onClick = {
                             viewModel.resetToInput()
                             onNavigateHome()
                         },
                         modifier = Modifier.align(Alignment.Center)
-                    ) { Text("Go Back") }
+                    ) {
+                        Text("Go Back")
+                    }
                 }
             }
         }

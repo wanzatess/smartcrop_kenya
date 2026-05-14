@@ -122,7 +122,7 @@ fun DashboardScreen(
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            "Enter NPK, pH and location data to get crop recommendations and a 3-month weather forecast.",
+                            "Enter your location data to get crop recommendations and a 3-month weather forecast.",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(top = 4.dp)

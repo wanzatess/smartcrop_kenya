@@ -13,15 +13,12 @@ class RealSmartCropRepository(private val context: Context) : SmartCropRepositor
             .use { it.readText() }
 
         val locations = mutableListOf<SubcountyLocation>()
-
         try {
             val root = JSONObject(json)
             val keys = root.keys()
-
             while (keys.hasNext()) {
                 val subcountyName = keys.next()
                 val entry = root.getJSONObject(subcountyName)
-
                 locations.add(
                     SubcountyLocation(
                         name = subcountyName,
@@ -36,21 +33,5 @@ class RealSmartCropRepository(private val context: Context) : SmartCropRepositor
         }
 
         locations.sortedWith(compareBy({ it.county }, { it.name }))
-    }
-
-    override suspend fun getCropPrediction(
-        location: SubcountyLocation,
-        metrics: SoilMetrics
-    ): Result<CropPredictionResult> = withContext(Dispatchers.IO) {
-        try {
-            val mockResult = CropPredictionResult(
-                topCrops = listOf("Maize", "Beans", "Wheat"),
-                averageTemp = 22.5,
-                averageRainfall = 800.0
-            )
-            Result.success(mockResult)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
     }
 }
